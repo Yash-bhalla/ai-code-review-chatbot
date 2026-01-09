@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Code Review Chatbot</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header><h1>AI Code Review Chatbot</h1></header>
+
+<div id="chat-box">
+  <div class="ai msg">
+    👨‍💻 Code Review Bot ready.<br>
+    Upload a code screenshot or ask a question.
+  </div>
+</div>
+
+<div id="loader">Analyzing…</div>
+
+<form id="chat-form">
+  <label for="file-input" class="upload-btn">📸</label>
+  <input id="file-input" type="file" accept="image/*" hidden>
+  <input id="text-input" type="text" placeholder="Ask about the code (optional)">
+  <button>Send</button>
+</form>
+
+<script>
+const f=document.getElementById("chat-form"),
+c=document.getElementById("chat-box"),
+l=document.getElementById("loader"),
+fi=document.getElementById("file-input"),
+ti=document.getElementById("text-input");
+
+let h=[{role:"system",content:
+`You are a senior software engineer acting as a CODE REVIEW CHATBOT.
+
+Rules:
+- Always give clean spacing
+- Always include an IMPROVED VERSION of the code
+- Explain simply
+
+Format:
+
+Detected Issues:
+- ...
+
+Bad Practices:
+- ...
+
+Improved Code:
+\`\`\`
+code
+\`\`\`
+
+Explanation:
+- ...
+`}];
+
+f.onsubmit=async e=>{
+e.preventDefault();
+if(!fi.files[0]&&!ti.value)return alert("Upload screenshot or ask a question");
+
+c.innerHTML+=`<div class="user msg">${ti.value||"📸 Code Screenshot Uploaded"}</div>`;
+l.style.display="block";
+
+let d=new FormData();
+d.append("history",JSON.stringify(h));
+ti.value&&d.append("message",ti.value);
+fi.files[0]&&d.append("image",fi.files[0]);
+
+try{
+let r=await fetch("/chat",{method:"POST",body:d}),
+j=await r.json();
+h.push({role:"assistant",content:j.reply});
+c.innerHTML+=`<div class="ai msg"><pre>${j.reply}</pre></div>`;
+}catch{
+c.innerHTML+=`<div class="ai msg">Server error</div>`;
+}
+
+l.style.display="none";
+fi.value=ti.value="";
+c.scrollTop=c.scrollHeight;
+};
+</script>
+
+</body>
+</html>

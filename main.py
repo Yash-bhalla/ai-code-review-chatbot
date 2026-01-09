@@ -11,7 +11,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key='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'
+    api_key=''
 )
 
 @app.get("/")
@@ -57,3 +57,4 @@ async def chat(
     return JSONResponse({
         "reply": response.choices[0].message.content
     })
+

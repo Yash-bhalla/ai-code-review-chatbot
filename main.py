@@ -9,9 +9,14 @@ from openai import OpenAI
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+if not API_KEY:
+    raise RuntimeError("OPENROUTER_API_KEY not set")
+
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key=''
+    api_key=API_KEY
 )
 
 @app.get("/")
@@ -24,37 +29,44 @@ async def chat(
     message: str = Form(""),
     image: UploadFile = File(None)
 ):
-    messages = json.loads(history)
+    try:
+        messages = json.loads(history)
 
-    content = []
+        content = []
 
-    if message:
-        content.append({
-            "type": "text",
-            "text": message
+        if message:
+            content.append({
+                "type": "text",
+                "text": message
+            })
+
+        if image:
+            img_bytes = await image.read()
+            img_base64 = base64.b64encode(img_bytes).decode("utf-8")
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{image.content_type};base64,{img_base64}"
+                }
+            })
+
+        messages.append({
+            "role": "user",
+            "content": content
         })
 
-    if image:
-        img_bytes = await image.read()
-        img_base64 = base64.b64encode(img_bytes).decode("utf-8")
-        content.append({
-            "type": "image_url",
-            "image_url": {
-                "url": f"data:{image.content_type};base64,{img_base64}"
-            }
+        response = client.chat.completions.create(
+            model="qwen/qwen-2.5-vl-7b-instruct:free",
+            messages=messages
+        )
+
+        return JSONResponse({
+            "reply": response.choices[0].message.content
         })
 
-    messages.append({
-        "role": "user",
-        "content": content
-    })
-
-    response = client.chat.completions.create(
-        model="qwen/qwen-2.5-vl-7b-instruct:free",
-        messages=messages
-    )
-
-    return JSONResponse({
-        "reply": response.choices[0].message.content
-    })
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"reply": f"Server error: {str(e)}"}
+        )
 
